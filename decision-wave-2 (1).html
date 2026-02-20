@@ -45,13 +45,16 @@ canvas { display:block; }
 @keyframes btnPulse{ from{box-shadow:0 0 20px rgba(0,255,255,0.5);} to{box-shadow:0 0 50px rgba(0,255,255,0.9),0 0 80px rgba(0,255,255,0.3);} }
 #start-btn:hover { transform:scale(1.06); background:linear-gradient(135deg,#fff,#0ff); }
 
-/* ── PROFESSOR PANEL (cinematic bottom overlay) ── */
+/* ── PROFESSOR PANEL (slides in from left) ── */
 #prof-overlay {
   position:fixed; left:0; right:0; bottom:0; z-index:130;
   display:none; flex-direction:column;
   pointer-events:all;
   background:linear-gradient(to bottom,transparent 0%,rgba(0,3,10,0.65) 10%,rgba(0,3,10,0.94) 28%,rgba(0,3,10,0.98) 100%);
+  transform:translateX(-100%);
+  transition:transform 0.55s cubic-bezier(0.22,1,0.36,1);
 }
+#prof-overlay.slide-in { transform:translateX(0); }
 #prof-overlay::before {
   content:''; position:absolute; inset:0; pointer-events:none;
   background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,200,0.018) 3px,rgba(0,255,200,0.018) 4px);
@@ -660,38 +663,42 @@ const ProfessorScene = (() => {
 
   function show(stageIdx,onDone){
     const line=LINES[Math.min(stageIdx,LINES.length-1)];
-    let typeDone=false;
-    let voiceDone=false;
-    const finish=()=>{
-      if(typeDone&&voiceDone){
-        setTimeout(()=>{
-          overlay.style.display='none';
-          if(onDone)onDone();
-        },320);
-      }
+    let typeDone=false, voiceDone=false, done=false;
+    const finishNow=()=>{
+      if(done)return; done=true;
+      VoiceNarrator.stop();
+      speakBars.classList.remove('active');
+      if(typeIv){clearInterval(typeIv);typeIv=null;}
+      overlay.classList.remove('slide-in');
+      setTimeout(()=>{ overlay.style.display='none'; if(onDone)onDone(); },380);
     };
+    const finish=()=>{ if(typeDone&&voiceDone) setTimeout(finishNow,320); };
 
     overlay.style.display='flex';
+    // Double rAF ensures display:flex is painted before transition fires
+    requestAnimationFrame(()=>requestAnimationFrame(()=>overlay.classList.add('slide-in')));
     dialogEl.textContent='';
     AudioEngine.playWarningTick();
+
+    // Hook up skip/wave button
+    const skipBtn=document.getElementById('enter-wave-btn');
+    skipBtn.style.display=''; skipBtn.classList.add('show'); skipBtn.onclick=finishNow;
 
     VoiceNarrator.speak(line.speech,{
       rate:0.88, pitch:1.0,
       onStart:()=>speakBars.classList.add('active'),
-      onEnd:()=>{
-        speakBars.classList.remove('active');
-        voiceDone=true;
-        finish();
-      }
+      onEnd:()=>{ speakBars.classList.remove('active'); voiceDone=true; finish(); }
     });
-
-    typewrite(dialogEl,line.text,16,()=>{
-      typeDone=true;
-      finish();
-    });
+    typewrite(dialogEl,line.text,16,()=>{ typeDone=true; finish(); });
   }
 
-  const hide=()=>{ overlay.style.display='none'; VoiceNarrator.stop(); speakBars.classList.remove('active'); if(typeIv){clearInterval(typeIv);typeIv=null;} };
+  const hide=()=>{
+    overlay.classList.remove('slide-in');
+    overlay.style.display='none';
+    VoiceNarrator.stop(); speakBars.classList.remove('active');
+    const sb=document.getElementById('enter-wave-btn'); if(sb) sb.classList.remove('show');
+    if(typeIv){clearInterval(typeIv);typeIv=null;}
+  };
   return { show,hide };
 })();
 
@@ -1059,6 +1066,8 @@ const ThreeRenderer = (() => {
   const pipCamera=new THREE.PerspectiveCamera(88,280/176,0.01,300);
   const decisionSides=[];
   let altPalette={r:0.7,g:0.15,b:0.95};
+  // True on first run so we auto-fly through the single slit before showing the double-slit wall
+  let introAutoTravel=false;
 
   function hslToRgb(h,s,l){
     const a=s*Math.min(l,1-l);
@@ -1090,8 +1099,8 @@ const ThreeRenderer = (() => {
 
   function spawnPortals(idx){
     if(pL)scene.remove(pL); if(pR)scene.remove(pR);
-    const s=getStageConfig(idx); pL=mkPortal(s.choices[0]); pL.position.set(-3.2,0,-14); scene.add(pL);
-    pR=mkPortal(s.choices[1]); pR.position.set(3.2,0,-14); scene.add(pR);
+    const s=getStageConfig(idx); pL=mkPortal(s.choices[0]); pL.position.set(-3.2,0,-6); scene.add(pL);
+    pR=mkPortal(s.choices[1]); pR.position.set(3.2,0,-6); scene.add(pR);
   }
 
   // particles
@@ -1226,7 +1235,35 @@ const ThreeRenderer = (() => {
     document.getElementById('pip-frame').style.display='block';
     const pip=document.getElementById('pip-frame');
     pip.classList.toggle('left',isLeft);
-    if(profEnabled) Prof.startApproach(); // professor starts walking as photon rushes forward
+    // (professor appears as HTML panel after travel, not 3D walk)
+  }
+
+  // Show professor panel then run decision; used for every stage after arriving via portal
+  function runDecision(){
+    GameState.setPhase('PROFESSOR');
+    ProfessorScene.show(stage,()=>{
+      GameState.setPhase('DECISION');
+      DecisionSystem.start((won)=>{
+        const side=decisionSides[stage]||'L';
+        GameState.recordDecision(won,side);
+        if(won){ AudioEngine.playWaveWin(); UIManager.showResult('WAVE PRESERVED','#0ff',1500); GameState.addScore(500); GameState.setCoherence(GameState.waveCoherence+20); }
+        else   { AudioEngine.playCollapse(); UIManager.showResult('COLLAPSED','#f33',1200); GameState.setCoherence(GameState.waveCoherence-40); }
+        setTimeout(()=>{
+          stage++;
+          if(won){
+            setStageSplitter(stage);
+            spawnPortals(stage); GameState.setPhase('PROPAGATING');
+            document.getElementById('path-echo').textContent='';
+            const s=getStageConfig(); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+            updateRGBSlitHUD(stage);
+          } else {
+            if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null; gameActive=false;
+            document.getElementById('pip-frame').style.display='none';
+            CollapseVFX.play(()=>CollapseScreen.show(won,()=>restartGame()));
+          }
+        },won?1800:1000);
+      });
+    });
   }
 
   function onTravelDone(){
@@ -1235,48 +1272,23 @@ const ThreeRenderer = (() => {
     const col=new THREE.Vector3(tarP.r,tarP.g,tarP.b);
     allMats.forEach(m=>m.uniforms.uColor.value.copy(col));
     pMat.color.setRGB(tarP.r,tarP.g,tarP.b);
-    // Keep ribs tinted to locked channel
     ribs.forEach(r=>r.material.color.setRGB(tarP.r*.8,tarP.g*.8,tarP.b*.8));
 
-    // Poll until professor arrives, then trigger dialog
-    let waitCycles=0;
-    function checkArrival(){
-      if(!profEnabled||Prof.getState()==='blocking'){
-        GameState.setPhase('PROFESSOR');
-        ProfessorScene.show(stage,()=>{
-          if(profEnabled) Prof.retreat();
-          GameState.setPhase('DECISION');
-          DecisionSystem.start((won)=>{
-            const side=decisionSides[stage]||'L';
-            GameState.recordDecision(won,side);
-            if(won){ AudioEngine.playWaveWin(); UIManager.showResult('WAVE PRESERVED','#0ff',1500); GameState.addScore(500); GameState.setCoherence(GameState.waveCoherence+20); }
-            else   { AudioEngine.playCollapse(); UIManager.showResult('COLLAPSED','#f33',1200); GameState.setCoherence(GameState.waveCoherence-40); }
-            setTimeout(()=>{
-              stage++;
-              if(won){
-                setStageSplitter(stage);
-                spawnPortals(stage); GameState.setPhase('PROPAGATING');
-                document.getElementById('path-echo').textContent='';
-                const s=getStageConfig(); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
-                updateRGBSlitHUD(stage);
-              } else {
-                if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null; gameActive=false;
-                document.getElementById('pip-frame').style.display='none';
-                CollapseVFX.play(()=>CollapseScreen.show(won,()=>restartGame()));
-              }
-            },won?1800:1000);
-          });
-        });
-      } else {
-        waitCycles++;
-        if(waitCycles>80){
-          // Fallback if professor animation never reaches blocking.
-          profEnabled=false;
-        }
-        setTimeout(checkArrival,80);
-      }
+    if(introAutoTravel){
+      // Arrived in front of the 2-slit wall — switch mesh, spawn portals, slide professor in
+      introAutoTravel=false;
+      setStageSplitter(1);  // 2-slit 3D wall
+      spawnPortals(stage);
+      const s=getStageConfig(stage);
+      UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+      updateRGBSlitHUD(stage);
+      GameState.setPhase('PROFESSOR');
+      // Professor panel slides in from the left; once narration ends, user sees portals and picks a slit
+      ProfessorScene.show(0,()=>{ GameState.setPhase('PROPAGATING'); });
+      return;
     }
-    checkArrival();
+
+    runDecision();
   }
 
   let camX=0,camY=0, clock=new THREE.Clock(), t=0;
@@ -1360,35 +1372,37 @@ const ThreeRenderer = (() => {
   function startGame(){
     ProfessorScene.hide();
     CollapseVFX.reset();
-    safeBuildProfessor();
-    gameActive=true; stage=0; decisionSides.length=0;
+    gameActive=true; stage=0; decisionSides.length=0; introAutoTravel=true;
     curP={r:0,g:.5,b:.8}; tarP={r:0,g:.5,b:.8};
-    setStageSplitter(0);
+    setStageSplitter(0);  // 1-slit wall visible ahead
     GameState.setPhase('PROPAGATING');
-    spawnPortals(0); UIManager.showHUD();
+    if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null;
+    UIManager.showHUD(); UIManager.clearLabels();
     MiniMapSystem.show(); MiniMapSystem.setPath([]);
     document.getElementById('pip-frame').style.display='none';
-    const s=getStageConfig(0); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+    document.getElementById('rgb-slit-hud').style.display='none';
     resetPolarizationLock();
-    updateRGBSlitHUD(0);
     AudioEngine.playPropagate();
+    // Pause briefly so user sees the 1-slit wall, then auto-fly through it
+    setTimeout(()=>{ if(gameActive&&introAutoTravel){ traveling=true; travelT=0; } },900);
     animate();
   }
 
   function restartGame(){
     ProfessorScene.hide();
     CollapseVFX.reset();
-    GameState.reset(); stage=0; traveling=false; travelT=0; decisionSides.length=0;
+    GameState.reset(); stage=0; traveling=false; travelT=0; decisionSides.length=0; introAutoTravel=true;
     curP={r:0,g:.5,b:.8}; tarP={r:0,g:.5,b:.8};
     gameActive=true; GameState.setPhase('PROPAGATING');
-    setStageSplitter(0);
-    spawnPortals(0); safeBuildProfessor();
+    setStageSplitter(0);  // 1-slit
+    if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null;
     MiniMapSystem.show(); MiniMapSystem.setPath([]);
     document.getElementById('pip-frame').style.display='none';
-    const s=getStageConfig(0); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+    UIManager.clearLabels();
+    document.getElementById('rgb-slit-hud').style.display='none';
     resetPolarizationLock();
-    updateRGBSlitHUD(0);
     UIManager.showHUD();
+    setTimeout(()=>{ if(gameActive&&introAutoTravel){ traveling=true; travelT=0; } },900);
   }
 
   window.addEventListener('resize',()=>{ const W=window.innerWidth,H=window.innerHeight; camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H); });
