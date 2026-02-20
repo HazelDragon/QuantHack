@@ -7,15 +7,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#000; overflow:hidden; cursor:none; font-family:'Share Tech Mono', monospace; }
+body { background:#000; overflow:hidden; cursor:auto; font-family:'Share Tech Mono', monospace; }
+body.hide-native-cursor, body.hide-native-cursor * { cursor:none !important; }
 canvas { display:block; }
 
 #cursor {
   position:fixed; width:14px; height:14px; margin-left:-7px; margin-top:-7px;
-  pointer-events:none; z-index:50; border-radius:50%;
+  pointer-events:none; z-index:9999; border-radius:50%;
   background:rgba(0,255,255,0.7); mix-blend-mode:screen;
   box-shadow:0 0 16px rgba(0,255,255,0.8),0 0 40px rgba(0,255,255,0.3);
   transition:transform 0.12s;
+  display:none;
 }
 #cursor.hovering { transform:scale(2.5); }
 #flash { position:fixed; inset:0; z-index:200; pointer-events:none; background:cyan; opacity:0; }
@@ -86,8 +88,7 @@ canvas { display:block; }
 .prof-footer { display:flex; align-items:center; gap:14px; padding:10px 0 16px; margin-top:8px; border-top:1px solid rgba(255,200,0,0.1); }
 .prof-warning { flex:1; padding:7px 12px; border-left:2px solid rgba(255,40,40,0.8); background:rgba(255,0,0,0.06); font-family:'Orbitron',sans-serif; font-size:9px; letter-spacing:0.12em; color:rgba(255,80,80,0.9); animation:warnPulse 1s ease-in-out infinite alternate; }
 @keyframes warnPulse{from{opacity:0.6}to{opacity:1}}
-#enter-wave-btn { flex-shrink:0; padding:10px 24px; font-family:'Orbitron',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.3em; color:#000; background:linear-gradient(135deg,#ffd700,#ff8c00); border:none; cursor:pointer; clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%); box-shadow:0 0 24px rgba(255,200,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.5s,transform 0.15s; text-transform:uppercase; }
-#enter-wave-btn.show { opacity:1; pointer-events:all; }
+#enter-wave-btn { flex-shrink:0; padding:10px 24px; font-family:'Orbitron',sans-serif; font-weight:700; font-size:10px; letter-spacing:0.3em; color:#000; background:linear-gradient(135deg,#ffd700,#ff8c00); border:none; cursor:pointer; clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%); box-shadow:0 0 24px rgba(255,200,0,0.5); opacity:1; pointer-events:all; transition:transform 0.15s; text-transform:uppercase; }
 #enter-wave-btn:hover { transform:scale(1.05); }
 
 /* ── DECISION ── */
@@ -226,6 +227,62 @@ canvas { display:block; }
   transition:opacity 0.9s ease 0.2s;
 }
 #collapse-veil.show #collapse-veil-sub { opacity:1; }
+
+/* ── Full-screen splitter wall + in-slit option bubbles ── */
+#splitter-wall {
+  position:fixed; inset:0; z-index:34; pointer-events:none; display:none;
+  grid-template-columns: 1fr minmax(240px,18vw) minmax(180px,12vw) minmax(240px,18vw) 1fr;
+  background:transparent;
+  opacity:0;
+  transition:opacity 0.35s ease;
+}
+#splitter-wall.show { opacity:1; }
+#splitter-wall.one-slit { grid-template-columns: 1fr minmax(420px,32vw) 1fr; }
+#splitter-wall.one-slit .splitter-mid { display:none; }
+.splitter-panel {
+  background:linear-gradient(180deg,rgba(15,18,24,0.95),rgba(5,6,10,0.97));
+  box-shadow:inset 0 0 46px rgba(0,0,0,0.7);
+}
+.splitter-slit {
+  position:relative;
+  background:
+    radial-gradient(ellipse at center,rgba(120,220,255,0.22),rgba(55,170,235,0.16) 50%,rgba(18,45,70,0.10) 100%),
+    linear-gradient(90deg,rgba(0,0,0,0.18),rgba(180,245,255,0.15),rgba(0,0,0,0.18));
+  border-left:2px solid rgba(160,235,255,0.7);
+  border-right:2px solid rgba(160,235,255,0.7);
+  backdrop-filter:blur(2px);
+}
+#wave-option-layer {
+  position:fixed; inset:0; z-index:35; pointer-events:none; display:none;
+  opacity:0;
+  transition:opacity 0.25s ease;
+}
+.wave-option-layer-show { opacity:1; }
+.wave-option {
+  position:absolute;
+  width:clamp(130px,16vw,230px);
+  aspect-ratio:1 / 1;
+  border-radius:50%;
+  border:6px solid rgba(255,75,205,0.95);
+  background:radial-gradient(circle at 35% 35%,rgba(125,240,255,0.32),rgba(10,80,130,0.2) 65%,rgba(0,30,50,0.14));
+  box-shadow:0 0 26px rgba(255,75,205,0.35), inset 0 0 24px rgba(0,220,255,0.22);
+  transform:translate(-50%,-50%);
+  display:flex; align-items:center; justify-content:center;
+  text-align:center; padding:12px;
+}
+.wave-option.right {
+  border-color:rgba(108,232,140,0.98);
+  box-shadow:0 0 26px rgba(108,232,140,0.35), inset 0 0 24px rgba(108,232,140,0.22);
+}
+.wave-option span {
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(14px,2vw,34px);
+  font-weight:700;
+  letter-spacing:0.08em;
+  color:#f0f8ff;
+  text-shadow:0 0 12px rgba(255,255,255,0.6);
+  text-transform:uppercase;
+}
 </style>
 </head>
 <body>
@@ -303,7 +360,7 @@ canvas { display:block; }
       <div id="prof-dialog"></div>
       <div class="prof-footer">
         <div class="prof-warning">⚠ UNIVERSE DECISION IMMINENT — PROBABILITY WINDOW COLLAPSING</div>
-        <button id="enter-wave-btn" style="display:none">ENTER FIELD ▶</button>
+        <button id="enter-wave-btn">STAY AS WAVE ▶</button>
       </div>
     </div>
   </div>
@@ -327,6 +384,17 @@ canvas { display:block; }
 <div id="collapse-veil">
   <div id="collapse-veil-text">WAVE FUNCTION COLLAPSED</div>
   <div id="collapse-veil-sub">GAME OVER</div>
+</div>
+<div id="splitter-wall" class="one-slit">
+  <div class="splitter-panel"></div>
+  <div class="splitter-slit"></div>
+  <div class="splitter-panel splitter-mid"></div>
+  <div class="splitter-slit"></div>
+  <div class="splitter-panel"></div>
+</div>
+<div id="wave-option-layer">
+  <div id="wave-option-left" class="wave-option left"><span>LEFT</span></div>
+  <div id="wave-option-right" class="wave-option right"><span>RIGHT</span></div>
 </div>
 
 <!-- HUD -->
@@ -455,7 +523,37 @@ const DecisionSystem = (() => {
   const start=cb=>{ if(active)return; active=true;timer=0;onDone=cb; overlay.style.display='block'; ProbabilityBar.start(); AudioEngine.playDecisionStart(); GameState.setPhase('DECISION'); };
   const stop=()=>{ active=false; overlay.style.display='none'; ProbabilityBar.stop(); };
   const click=()=>{ if(!active)return; const p=ProbabilityBar.click(); AudioEngine.playClick(p); vignette.style.background=`radial-gradient(ellipse at center,transparent 30%,rgba(0,255,${Math.floor(p*200)},0.22) 100%)`; };
-  const update=dt=>{ if(!active)return; timer=Math.min(timer+dt,DUR+0.01); const prog=timer/DUR,rem=Math.max(0,1-prog); const c=prog<0.5?'#0ff':prog<0.75?'#ffcc00':'#ff3344'; cdFill.style.width=(rem*100)+'%';cdFill.style.background=c;cdFill.style.boxShadow=`0 0 8px ${c}`; ProbabilityBar.update(dt); shakeAmt=prog*prog*14; warnTick-=dt; if(warnTick<=0&&prog>0.5){AudioEngine.playWarningTick();warnTick=Math.max(0.15,0.5*(1-prog));} vignette.style.background=`radial-gradient(ellipse at center,transparent 30%,${shadeColor(prog*0.8)} 100%)`; if(timer>=DUR){const won=ProbabilityBar.getValue()>0.5;stop();if(onDone)onDone(won,ProbabilityBar.getValue());} };
+  const update=dt=>{
+    if(!active)return;
+    timer=Math.min(timer+dt,DUR+0.01);
+    const prog=timer/DUR,rem=Math.max(0,1-prog);
+    const c=prog<0.5?'#0ff':prog<0.75?'#ffcc00':'#ff3344';
+    cdFill.style.width=(rem*100)+'%';
+    cdFill.style.background=c;
+    cdFill.style.boxShadow=`0 0 8px ${c}`;
+
+    ProbabilityBar.update(dt);
+    const p=ProbabilityBar.getValue();
+    const redRisk=Math.max(0,(0.5-p)/0.5);     // 0 in green/center, 1 at far red
+    const greenSafety=Math.max(0,(p-0.5)/0.5); // 0 in red/center, 1 at far green
+    const timePressure=Math.pow(prog,1.2);
+    // Jitter scales primarily with red risk, but still gets a mild time-pressure lift.
+    shakeAmt=2.0 + redRisk*18.0 + timePressure*3.0 - greenSafety*1.5;
+    shakeAmt=Math.max(0,shakeAmt);
+
+    warnTick-=dt;
+    if(warnTick<=0&&prog>0.5){
+      AudioEngine.playWarningTick();
+      warnTick=Math.max(0.15,0.5*(1-prog));
+    }
+    const stress=Math.min(1,redRisk*0.9+timePressure*0.35);
+    vignette.style.background=`radial-gradient(ellipse at center,transparent 30%,${shadeColor(stress)} 100%)`;
+    if(timer>=DUR){
+      const won=ProbabilityBar.getValue()>0.5;
+      stop();
+      if(onDone)onDone(won,ProbabilityBar.getValue());
+    }
+  };
   const getShake=()=>active?shakeAmt:0;
   return { start,stop,click,update,getShake };
 })();
@@ -589,6 +687,7 @@ const ProfessorScene = (() => {
   const overlay=document.getElementById('prof-overlay');
   const dialogEl=document.getElementById('prof-dialog');
   const speakBars=document.getElementById('speak-bars');
+  const skipBtn=document.getElementById('enter-wave-btn');
   let typeIv=null;
   const LINES=[
     {
@@ -611,17 +710,25 @@ const ProfessorScene = (() => {
     const line=LINES[Math.min(stageIdx,LINES.length-1)];
     let typeDone=false;
     let voiceDone=false;
+    let done=false;
+    const finishNow=()=>{
+      if(done)return;
+      done=true;
+      VoiceNarrator.stop();
+      speakBars.classList.remove('active');
+      if(typeIv){clearInterval(typeIv);typeIv=null;}
+      overlay.style.display='none';
+      if(onDone)onDone();
+    };
     const finish=()=>{
       if(typeDone&&voiceDone){
-        setTimeout(()=>{
-          overlay.style.display='none';
-          if(onDone)onDone();
-        },320);
+        setTimeout(finishNow,320);
       }
     };
 
     overlay.style.display='flex';
     dialogEl.textContent='';
+    skipBtn.onclick=finishNow;
     AudioEngine.playWarningTick();
 
     VoiceNarrator.speak(line.speech,{
@@ -652,7 +759,13 @@ const IntroScene = (() => {
   const TEXT=`SYSTEM BOOT — QUANTUM INITIALIZATION...\n> Loading wave function... [████████████] DONE\n> Calibrating photon emitter... [████████████] DONE\n> Beam splitter array: ONLINE\n\nIDENTITY CONFIRMED: You are PHOTON-1\nWavelength: 532 nm  |  Speed: c  |  Mass: 0\n\nYou are neither here nor there.\nYou are the question before the answer.\nYou are a wave — until someone looks.\n\nTwo beam splitters stand between you and freedom.\nAt each one, the universe will try to collapse you.\n\nOBJECTIVE: Remain a wave. Survive both decisions.\nMETHOD: Click rapidly when the decision window opens.\n         Keep probability in the GREEN.\n\nThe tunnel awaits, photon. Try not to get observed.`;
   let started=false;
   function tw_run(el,txt,spd,cb){ el.textContent='';let i=0;const iv=setInterval(()=>{ if(i<txt.length){el.textContent+=txt[i];i++;}else{clearInterval(iv);bl.style.display='none';if(cb)cb();} },spd); }
-  function show(onStart){ scr.style.display='flex'; setTimeout(()=>{ AudioEngine.playIntro(); tw_run(tw,TEXT,16,()=>btn.classList.add('visible')); },600); btn.onclick=()=>{ if(started)return;started=true;scr.style.display='none';AudioEngine.init();if(onStart)onStart(); }; }
+  function show(onStart){
+    scr.style.display='flex';
+    document.body.classList.add('hide-native-cursor');
+    const c=document.getElementById('cursor'); if(c){ c.style.display='block'; c.style.left='-100px'; c.style.top='-100px'; }
+    setTimeout(()=>{ AudioEngine.playIntro(); tw_run(tw,TEXT,16,()=>btn.classList.add('visible')); },600);
+    btn.onclick=()=>{ if(started)return;started=true;scr.style.display='none';AudioEngine.init();if(onStart)onStart(); };
+  }
   return { show };
 })();
 
@@ -719,27 +832,62 @@ const ThreeRenderer = (() => {
   const wl=new THREE.Mesh(wg,lM); wl.rotation.y=Math.PI/2; wl.position.set(-7,0,-22); scene.add(wl);
   const wr=new THREE.Mesh(wg.clone(),lM); wr.rotation.y=-Math.PI/2; wr.position.set(7,0,-22); scene.add(wr);
 
-  // beam splitter visuals: stage1 single-slit, stage2 double-slit
-  function mkSplitter(z, slitCount=1){
+  function getSplitterProfile(stageIdx=0){
+    if(stageIdx===0){
+      return {
+        slitCount:1,
+        slitX:[0],
+        slitW:14.0,
+        choiceX:[-3.8,3.8],
+        totalW:88,
+        panelH:52,
+        panelD:0.24
+      };
+    }
+    return {
+      slitCount:2,
+      slitX:[-9.0,9.0],
+      slitW:7.2,
+      choiceX:[-9.0,9.0],
+      totalW:88,
+      panelH:52,
+      panelD:0.24
+    };
+  }
+
+  // beam splitter visuals: stage 0 = single slit, stage >=1 = double slit
+  function mkSplitter(z, profile){
     const g=new THREE.Group();
     g.position.z=z;
 
-    const panelMat=new THREE.MeshPhongMaterial({color:0x012234,emissive:0x003344,emissiveIntensity:0.55,transparent:true,opacity:0.9,side:THREE.DoubleSide});
+    const panelMat=new THREE.MeshPhysicalMaterial({
+      color:0x66d0ff,
+      emissive:0x003344,
+      emissiveIntensity:0.42,
+      transparent:true,
+      opacity:0.78,
+      transmission:0.68,
+      thickness:1.2,
+      ior:1.22,
+      roughness:0.16,
+      metalness:0.0,
+      clearcoat:1.0,
+      clearcoatRoughness:0.12,
+      side:THREE.DoubleSide
+    });
     const edgeMat=new THREE.LineBasicMaterial({color:0x00bbff,transparent:true,opacity:0.65});
-    const clampedSlits=Math.max(1,Math.min(slitCount,6));
-    const slitW=Math.max(0.58,1.12-(clampedSlits-1)*0.08);
-    const slitGap=Math.max(0.42,1.05-(clampedSlits-1)*0.07);
-    const slitSpan=(clampedSlits*slitW)+((clampedSlits-1)*slitGap);
-    const totalW=Math.max(10.8,slitSpan+2.4);
-    const slitStart=-slitSpan*0.5;
-    const slitX=Array.from({length:clampedSlits},(_,i)=>slitStart+(i*(slitW+slitGap))+slitW*0.5);
-    const panelH=8.6;
-    const panelD=0.2;
+    const clampedSlits=Math.max(1,Math.min(profile.slitCount,2));
+    const slitW=profile.slitW;
+    const slitX=profile.slitX.slice(0,clampedSlits);
+    const totalW=profile.totalW;
+    const panelH=profile.panelH;
+    const panelD=profile.panelD;
 
     // Build panel segments between each slit opening.
     const openings=slitX.map(x=>[x-slitW*0.5,x+slitW*0.5]);
     let cursor=-totalW*0.5;
     const segments=[];
+    const panelMats=[];
     openings.forEach(([oL,oR])=>{
       if(oL-cursor>0.14) segments.push([cursor,oL]);
       cursor=oR;
@@ -749,7 +897,9 @@ const ThreeRenderer = (() => {
     segments.forEach(([x0,x1],idx)=>{
       const w=x1-x0;
       const cx=(x0+x1)*0.5;
-      const seg=new THREE.Mesh(new THREE.BoxGeometry(w,panelH,panelD),idx%2?panelMat.clone():panelMat);
+      const segMat=idx%2?panelMat.clone():panelMat;
+      panelMats.push(segMat);
+      const seg=new THREE.Mesh(new THREE.BoxGeometry(w,panelH,panelD),segMat);
       seg.position.x=cx; g.add(seg);
       const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,panelH,panelD)),edgeMat.clone());
       edge.position.x=cx; g.add(edge);
@@ -775,7 +925,7 @@ const ThreeRenderer = (() => {
         `,
         transparent:true,side:THREE.DoubleSide,depthWrite:false
       });
-      const slitMesh=new THREE.Mesh(new THREE.PlaneGeometry(slitW,panelH,1,48),slitMat);
+      const slitMesh=new THREE.Mesh(new THREE.PlaneGeometry(slitW,panelH,1,56),slitMat);
       slitMesh.position.set(x,0,0.14);
       g.add(slitMesh);
       slitMats.push(slitMat);
@@ -785,18 +935,19 @@ const ThreeRenderer = (() => {
       g.add(slitLight);
     });
 
-    g.rotation.y=Math.PI*0.08;
-    g.userData={slitMats};
+    g.rotation.y=Math.PI*0.035;
+    g.userData={slitMats,panelMats,profile};
     scene.add(g);
     return g;
   }
-  let activeSplitter=mkSplitter(-10,1);
-  let currentSplitterSlits=1;
+  let currentSplitterProfile=getSplitterProfile(0);
+  let activeSplitter=mkSplitter(-40,currentSplitterProfile);
+  let currentSplitterSlits=currentSplitterProfile.slitCount;
   function setStageSplitter(stageIdx){
-    const slitCount=Math.max(1,Math.min(stageIdx+1,6));
-    currentSplitterSlits=slitCount;
+    currentSplitterProfile=getSplitterProfile(stageIdx);
+    currentSplitterSlits=currentSplitterProfile.slitCount;
     if(activeSplitter) scene.remove(activeSplitter);
-    activeSplitter=mkSplitter(-10,slitCount);
+    activeSplitter=mkSplitter(-40,currentSplitterProfile);
   }
 
   // ── ProfessorCharacter ────────────────────────────────────
@@ -923,6 +1074,7 @@ const ThreeRenderer = (() => {
 
     const startApproach=()=>{ if(!root)return; root.position.set(0,-2.8,START); root.visible=true; state='walking'; wT=0; ftTimer=0; };
     const stopWalk=()=>state='blocking';
+    const forceBlocking=()=>{ if(!root)return; root.visible=true; root.position.set(0,-2.8,TARGET); state='blocking'; };
     const retreat=()=>{
       state='retreating';
       setTimeout(()=>{ if(root)root.visible=false; state='hidden'; },2200);
@@ -945,7 +1097,7 @@ const ThreeRenderer = (() => {
       }
     }
 
-    return { build,startApproach,stopWalk,retreat,update,getState:()=>state };
+    return { build,startApproach,stopWalk,forceBlocking,retreat,update,getState:()=>state };
   })();
 
   let profEnabled=true;
@@ -986,11 +1138,50 @@ const ThreeRenderer = (() => {
     { l:'entangle', r:'decohere', eL:0x66aaff, eR:0xff5599 },
   ];
   const stageCache={};
-  let stage=0, traveling=false, travelT=0;
+  let stage=0, traveling=false, travelT=0, postTravel=false, postTravelT=0;
+  let introAutoTravel=true;
   let pL=null, pR=null, hovered=null, gameActive=false;
   const pipCamera=new THREE.PerspectiveCamera(88,280/176,0.01,300);
   const decisionSides=[];
   let altPalette={r:0.7,g:0.15,b:0.95};
+  const splitterWallEl=document.getElementById('splitter-wall');
+  const waveLayerEl=document.getElementById('wave-option-layer');
+  const waveLeftEl=document.getElementById('wave-option-left');
+  const waveRightEl=document.getElementById('wave-option-right');
+
+  function setWallMode(profile){
+    const one=profile.slitCount===1;
+    splitterWallEl.classList.toggle('one-slit',one);
+    waveRightEl.style.display='flex';
+  }
+
+  function setWaveOptionsVisible(show){
+    waveLayerEl.style.display='block';
+    waveLayerEl.classList.toggle('wave-option-layer-show',!!show);
+  }
+
+  function setWallVisibility(show){
+    splitterWallEl.style.display='grid';
+    splitterWallEl.classList.toggle('show',!!show);
+  }
+
+  function worldToScreen(v3){
+    const p=v3.clone().project(camera);
+    return {
+      x:(p.x*0.5+0.5)*window.innerWidth,
+      y:(-p.y*0.5+0.5)*window.innerHeight
+    };
+  }
+
+  function updateWaveOptionOverlay(){
+    if(!pL||!pR) return;
+    const l=worldToScreen(pL.getWorldPosition(new THREE.Vector3()));
+    const r=worldToScreen(pR.getWorldPosition(new THREE.Vector3()));
+    waveLeftEl.style.left=l.x+'px';
+    waveLeftEl.style.top=l.y+'px';
+    waveRightEl.style.left=r.x+'px';
+    waveRightEl.style.top=r.y+'px';
+  }
 
   function hslToRgb(h,s,l){
     const a=s*Math.min(l,1-l);
@@ -1022,8 +1213,14 @@ const ThreeRenderer = (() => {
 
   function spawnPortals(idx){
     if(pL)scene.remove(pL); if(pR)scene.remove(pR);
-    const s=getStageConfig(idx); pL=mkPortal(s.choices[0]); pL.position.set(-3.2,0,-14); scene.add(pL);
-    pR=mkPortal(s.choices[1]); pR.position.set(3.2,0,-14); scene.add(pR);
+    const s=getStageConfig(idx);
+    const profile=getSplitterProfile(idx+1);
+    pL=mkPortal(s.choices[0]); pL.position.set(profile.choiceX[0],0,-37); scene.add(pL);
+    pR=mkPortal(s.choices[1]); pR.position.set(profile.choiceX[1],0,-37); scene.add(pR);
+    waveLeftEl.querySelector('span').textContent=s.choices[0].label.toUpperCase();
+    waveRightEl.querySelector('span').textContent=s.choices[1].label.toUpperCase();
+    setWallMode(profile);
+    setWaveOptionsVisible(true);
   }
 
   // particles
@@ -1089,7 +1286,8 @@ const ThreeRenderer = (() => {
     document.getElementById('pip-frame').style.display='block';
     const pip=document.getElementById('pip-frame');
     pip.classList.toggle('left',isLeft);
-    if(profEnabled) Prof.startApproach(); // professor starts walking as photon rushes forward
+    setWallVisibility(false);
+    setWaveOptionsVisible(false);
   }
 
   function onTravelDone(){
@@ -1100,11 +1298,72 @@ const ThreeRenderer = (() => {
     pMat.color.setRGB(tarP.r,tarP.g,tarP.b);
     ribs.forEach(r=>r.material.color.setRGB(tarP.r*.8,tarP.g*.8,tarP.b*.8));
 
+    // Opening sequence: first wall is a single slit (no choices), photon auto-flies through.
+    // After arriving at the TWO-slit wall, professor walks in, explains, then user can choose a slit.
+    if(introAutoTravel){
+      introAutoTravel=false;
+      setStageSplitter(1);  // switch to 2-slit 3D mesh
+      // Professor walks in from behind camera to greet the photon at the double-slit wall
+      if(profEnabled) setTimeout(()=>{ Prof.startApproach(); }, 320);
+      const profDeadline0=Date.now()+4500;
+      function checkArrivalIntro(){
+        if(profEnabled&&Date.now()>profDeadline0&&Prof.getState()!=='blocking'){
+          Prof.forceBlocking();
+        }
+        if(!profEnabled||Prof.getState()==='blocking'){
+          GameState.setPhase('PROFESSOR');
+          // Wall hidden so the 3D professor character is clearly visible
+          setWallVisibility(false);
+          ProfessorScene.show(0,()=>{
+            if(profEnabled) Prof.retreat();
+            // After briefing: run Stage 0 decision (click rapidly to stay as wave)
+            GameState.setPhase('DECISION');
+            DecisionSystem.start((won0)=>{
+              const side0=decisionSides[0]||'C';
+              GameState.recordDecision(won0,side0);
+              if(won0){ AudioEngine.playWaveWin(); UIManager.showResult('WAVE PRESERVED','#0ff',1500); GameState.addScore(500); GameState.setCoherence(GameState.waveCoherence+20); }
+              else     { AudioEngine.playCollapse(); UIManager.showResult('COLLAPSED','#f33',1200); GameState.setCoherence(GameState.waveCoherence-40); }
+              setTimeout(()=>{
+                stage++; // now stage=1 — user navigates the 2-slit wall
+                if(won0){
+                  setStageSplitter(stage+1);
+                  spawnPortals(stage); GameState.setPhase('PROPAGATING');
+                  setWallVisibility(true);
+                  document.getElementById('path-echo').textContent='';
+                  const s=getStageConfig(stage); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+                } else {
+                  if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null; gameActive=false;
+                  document.getElementById('pip-frame').style.display='none';
+                  setWallVisibility(false);
+                  CollapseVFX.play(()=>CollapseScreen.show(won0,()=>restartGame()));
+                }
+              },won0?1800:1000);
+            });
+          });
+        } else {
+          setTimeout(checkArrivalIntro,80);
+        }
+      }
+      setTimeout(checkArrivalIntro,320);
+      return;
+    }
+
+    const PROF_START_DELAY=320;
+    if(profEnabled){
+      // Start professor approach only after travel settles to avoid stage transition jank.
+      setTimeout(()=>{ if(gameActive&&GameState.phase==='PROPAGATING') Prof.startApproach(); },PROF_START_DELAY);
+    }
+
     // Poll until professor arrives, then trigger dialog
-    let waitCycles=0;
+    const profDeadline=Date.now()+4500;
     function checkArrival(){
+      if(profEnabled&&Date.now()>profDeadline&&Prof.getState()!=='blocking'){
+        // Hard fallback: force arrival pose so narration always starts.
+        Prof.forceBlocking();
+      }
       if(!profEnabled||Prof.getState()==='blocking'){
         GameState.setPhase('PROFESSOR');
+        setWallVisibility(false);
         ProfessorScene.show(stage,()=>{
           if(profEnabled) Prof.retreat();
           GameState.setPhase('DECISION');
@@ -1116,28 +1375,25 @@ const ThreeRenderer = (() => {
             setTimeout(()=>{
               stage++;
               if(won){
-                setStageSplitter(stage);
+                setStageSplitter(stage+1);
                 spawnPortals(stage); GameState.setPhase('PROPAGATING');
+                setWallVisibility(true);
                 document.getElementById('path-echo').textContent='';
                 const s=getStageConfig(); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
               } else {
                 if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null; gameActive=false;
                 document.getElementById('pip-frame').style.display='none';
+                setWallVisibility(false);
                 CollapseVFX.play(()=>CollapseScreen.show(won,()=>restartGame()));
               }
             },won?1800:1000);
           });
         });
       } else {
-        waitCycles++;
-        if(waitCycles>80){
-          // Fallback if professor animation never reaches blocking.
-          profEnabled=false;
-        }
         setTimeout(checkArrival,80);
       }
     }
-    checkArrival();
+    setTimeout(checkArrival,PROF_START_DELAY);
   }
 
   let camX=0,camY=0, clock=new THREE.Clock(), t=0;
@@ -1153,14 +1409,37 @@ const ThreeRenderer = (() => {
 
     let boost=0;
     if(traveling){
-      travelT=Math.min(1,travelT+dt*.7);
+      travelT=Math.min(1,travelT+dt*.42);
       const ease=travelT<.5?4*travelT*travelT*travelT:1-Math.pow(-2*travelT+2,3)/2;
       boost=ease;
-      camera.position.z=-ease*18; camera.fov=80+ease*25; camera.updateProjectionMatrix();
+      camera.position.z=-ease*32; camera.fov=80+ease*28; camera.updateProjectionMatrix();
       allMats.forEach(m=>m.uniforms.uTravel.value=ease);
       if(pL)pL.userData.mat.uniforms.uTravel.value=ease;
       if(pR)pR.userData.mat.uniforms.uTravel.value=ease;
-      if(travelT>=1){ camera.position.z=0;camera.fov=80;camera.updateProjectionMatrix();allMats.forEach(m=>m.uniforms.uTravel.value=0);onTravelDone(); }
+      if(travelT>=1){
+        traveling=false;
+        postTravel=true;
+        postTravelT=0;
+      }
+    } else if(postTravel){
+      postTravelT=Math.min(1,postTravelT+dt*2.2);
+      const s=postTravelT<0.5?4*postTravelT*postTravelT*postTravelT:1-Math.pow(-2*postTravelT+2,3)/2;
+      camera.position.z=(-32)*(1-s);
+      camera.fov=80+28*(1-s);
+      camera.updateProjectionMatrix();
+      allMats.forEach(m=>m.uniforms.uTravel.value=(1-s));
+      if(pL)pL.userData.mat.uniforms.uTravel.value=(1-s);
+      if(pR)pR.userData.mat.uniforms.uTravel.value=(1-s);
+      if(postTravelT>=1){
+        postTravel=false;
+        camera.position.z=0;
+        camera.fov=80;
+        camera.updateProjectionMatrix();
+        allMats.forEach(m=>m.uniforms.uTravel.value=0);
+        if(pL)pL.userData.mat.uniforms.uTravel.value=0;
+        if(pR)pR.userData.mat.uniforms.uTravel.value=0;
+        onTravelDone();
+      }
     } else {
       const sx=shake>0?Math.sin(t*17)*shake*.04:0, sy=shake>0?Math.cos(t*23)*shake*.03:0;
       camX+=(mouse.nx*.5-camX)*.03; camY+=(mouse.ny*.3-camY)*.03;
@@ -1172,6 +1451,9 @@ const ThreeRenderer = (() => {
 
     allMats.forEach(m=>{ m.uniforms.uTime.value=t;m.uniforms.uColor.value.copy(col);m.uniforms.uMouse.value.set(mouse.nx,mouse.ny);m.uniforms.uShake.value=shake*.05; });
     (activeSplitter.userData.slitMats||[]).forEach(sm=>{ sm.uniforms.uTime.value=t; });
+    (activeSplitter.userData.panelMats||[]).forEach((pm,i)=>{
+      pm.emissiveIntensity=0.32+Math.sin(t*1.6+i*0.8)*0.11;
+    });
     if(pL)pL.userData.mat.uniforms.uTime.value=t;
     if(pR)pR.userData.mat.uniforms.uTime.value=t;
     if(pL&&!traveling){ pL.rotation.z=Math.sin(t*.6)*.06;pR.rotation.z=Math.cos(t*.7)*.06;pL.position.y=Math.sin(t*.5)*.12;pR.position.y=Math.cos(t*.55+1)*.12; }
@@ -1179,6 +1461,19 @@ const ThreeRenderer = (() => {
     Prof.update(dt,t);
     updateRibs(t); updateParts(boost);
     if(gameActive)checkHover();
+    // Only keep wall + wave-options visible when stationary at a decision point.
+    // Hide them whenever the camera is traveling (auto-fly OR user-initiated).
+    if(gameActive&&GameState.phase==='PROPAGATING'&&!traveling&&!postTravel){
+      if(pL&&pR){
+        setWaveOptionsVisible(true);
+        updateWaveOptionOverlay();
+      } else {
+        setWaveOptionsVisible(false);
+      }
+    } else {
+      setWallVisibility(false);
+      setWaveOptionsVisible(false);
+    }
     camera.lookAt(camX*.1,camY*.1,-50);
     const cW=window.innerWidth,cH=window.innerHeight;
     renderer.setScissorTest(true);
@@ -1219,32 +1514,54 @@ const ThreeRenderer = (() => {
   }
 
   function startGame(){
+    document.body.classList.add('hide-native-cursor');
+    const c=document.getElementById('cursor'); if(c) c.style.display='block';
     ProfessorScene.hide();
     CollapseVFX.reset();
     safeBuildProfessor();
-    gameActive=true; stage=0; decisionSides.length=0;
+    gameActive=true; stage=0; decisionSides.length=0; introAutoTravel=true; postTravel=false; postTravelT=0;
     setStageSplitter(0);
     GameState.setPhase('PROPAGATING');
-    spawnPortals(0); UIManager.showHUD();
+    if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null;
+    UIManager.clearLabels();
+    UIManager.showHUD();
+    setWallVisibility(false);
+    setWaveOptionsVisible(false);
     MiniMapSystem.show(); MiniMapSystem.setPath([]);
     document.getElementById('pip-frame').style.display='none';
-    const s=getStageConfig(0); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
     AudioEngine.playPropagate();
+    // Auto-fly through the first (single) slit before enabling any choices.
+    // Wall stays hidden — the 3D splitter mesh in the scene provides the visual.
+    setTimeout(()=>{
+      if(!gameActive||!introAutoTravel)return;
+      traveling=true;
+      travelT=0;
+    },700);
     animate();
   }
 
   function restartGame(){
+    document.body.classList.add('hide-native-cursor');
+    const c=document.getElementById('cursor'); if(c) c.style.display='block';
     ProfessorScene.hide();
     CollapseVFX.reset();
-    GameState.reset(); stage=0; traveling=false; travelT=0; decisionSides.length=0;
+    GameState.reset(); stage=0; traveling=false; travelT=0; decisionSides.length=0; introAutoTravel=true; postTravel=false; postTravelT=0;
     curP={r:0,g:.5,b:.8}; tarP={r:0,g:.5,b:.8};
     gameActive=true; GameState.setPhase('PROPAGATING');
     setStageSplitter(0);
-    spawnPortals(0); safeBuildProfessor();
+    if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null;
+    safeBuildProfessor();
+    setWallVisibility(false);
+    setWaveOptionsVisible(false);
     MiniMapSystem.show(); MiniMapSystem.setPath([]);
     document.getElementById('pip-frame').style.display='none';
-    const s=getStageConfig(0); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+    UIManager.clearLabels();
     UIManager.showHUD();
+    setTimeout(()=>{
+      if(!gameActive||!introAutoTravel)return;
+      traveling=true;
+      travelT=0;
+    },700);
   }
 
   window.addEventListener('resize',()=>{ const W=window.innerWidth,H=window.innerHeight; camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H); });
