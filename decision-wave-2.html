@@ -195,6 +195,37 @@ canvas { display:block; }
   font-family:'Orbitron',sans-serif; font-size:7px; letter-spacing:0.38em;
   color:rgba(0,255,255,0.42);
 }
+
+/* ── Collapse VFX ── */
+#collapse-veil {
+  position:fixed; inset:0; z-index:210; display:none; pointer-events:none;
+  align-items:center; justify-content:center; flex-direction:column;
+  background:radial-gradient(circle at 50% 45%, rgba(0,25,35,0.15), rgba(0,0,0,0.96));
+  opacity:0;
+  transition:opacity 1.3s ease;
+}
+#collapse-veil.show { opacity:1; }
+#collapse-veil-text {
+  font-family:'Orbitron',sans-serif;
+  font-weight:900;
+  font-size:clamp(24px,4.5vw,58px);
+  letter-spacing:0.18em;
+  color:#ff4466;
+  text-shadow:0 0 28px rgba(255,50,90,0.9);
+  opacity:0;
+  transform:scale(0.95);
+  transition:opacity 0.6s ease, transform 0.6s ease;
+}
+#collapse-veil.show #collapse-veil-text { opacity:1; transform:scale(1); }
+#collapse-veil-sub {
+  margin-top:10px;
+  font-size:12px;
+  letter-spacing:0.32em;
+  color:rgba(255,120,140,0.75);
+  opacity:0;
+  transition:opacity 0.9s ease 0.2s;
+}
+#collapse-veil.show #collapse-veil-sub { opacity:1; }
 </style>
 </head>
 <body>
@@ -293,6 +324,10 @@ canvas { display:block; }
   </div>
 </div>
 <div id="result-msg"></div>
+<div id="collapse-veil">
+  <div id="collapse-veil-text">WAVE FUNCTION COLLAPSED</div>
+  <div id="collapse-veil-sub">GAME OVER</div>
+</div>
 
 <!-- HUD -->
 <div id="game-hud">
@@ -439,6 +474,37 @@ const UIManager = (() => {
   const setLabels=(l,r,cL,cR)=>{ const ll=document.getElementById('label-left'),lr=document.getElementById('label-right'); ll.textContent=l||'';lr.textContent=r||''; ll.style.color=cL?h2r(cL.toString(16).padStart(6,'0'),0.5):'transparent'; lr.style.color=cR?h2r(cR.toString(16).padStart(6,'0'),0.5):'transparent'; };
   const clearLabels=()=>{ document.getElementById('label-left').textContent=''; document.getElementById('label-right').textContent=''; };
   return { showHUD,showResult,setLabels,clearLabels };
+})();
+
+// ═══════════════════════════════════════════════════════════
+// MODULE: CollapseVFX
+// ═══════════════════════════════════════════════════════════
+const CollapseVFX = (() => {
+  const veil=document.getElementById('collapse-veil');
+  let timer=null;
+
+  function play(onDone){
+    if(timer){clearTimeout(timer);timer=null;}
+    veil.style.display='flex';
+    veil.classList.remove('show');
+    // Reflow to restart transition when replaying.
+    void veil.offsetWidth;
+    veil.classList.add('show');
+    GameState.setPhase('COLLAPSE');
+    VoiceNarrator.speak('Wave function collapsed. Game over.',{rate:0.82,pitch:0.9});
+    timer=setTimeout(()=>{
+      timer=null;
+      if(onDone)onDone();
+    },2400);
+  }
+
+  function reset(){
+    if(timer){clearTimeout(timer);timer=null;}
+    veil.classList.remove('show');
+    veil.style.display='none';
+  }
+
+  return { play, reset };
 })();
 
 // ═══════════════════════════════════════════════════════════
@@ -660,35 +726,34 @@ const ThreeRenderer = (() => {
 
     const panelMat=new THREE.MeshPhongMaterial({color:0x012234,emissive:0x003344,emissiveIntensity:0.55,transparent:true,opacity:0.9,side:THREE.DoubleSide});
     const edgeMat=new THREE.LineBasicMaterial({color:0x00bbff,transparent:true,opacity:0.65});
-    const slitX=slitCount===1?[0]:[-0.95,0.95];
-    const panelW=slitCount===1?4.8:3.2;
+    const clampedSlits=Math.max(1,Math.min(slitCount,6));
+    const slitW=Math.max(0.58,1.12-(clampedSlits-1)*0.08);
+    const slitGap=Math.max(0.42,1.05-(clampedSlits-1)*0.07);
+    const slitSpan=(clampedSlits*slitW)+((clampedSlits-1)*slitGap);
+    const totalW=Math.max(10.8,slitSpan+2.4);
+    const slitStart=-slitSpan*0.5;
+    const slitX=Array.from({length:clampedSlits},(_,i)=>slitStart+(i*(slitW+slitGap))+slitW*0.5);
     const panelH=8.6;
     const panelD=0.2;
 
-    // Create barrier with explicit openings so the slit is obvious.
-    if(slitCount===1){
-      const leftPanel=new THREE.Mesh(new THREE.BoxGeometry(panelW,panelH,panelD),panelMat);
-      leftPanel.position.x=-3.2; g.add(leftPanel);
-      const rightPanel=new THREE.Mesh(new THREE.BoxGeometry(panelW,panelH,panelD),panelMat.clone());
-      rightPanel.position.x=3.2; g.add(rightPanel);
-      const leftEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(panelW,panelH,panelD)),edgeMat);
-      leftEdge.position.x=-3.2; g.add(leftEdge);
-      const rightEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(panelW,panelH,panelD)),edgeMat.clone());
-      rightEdge.position.x=3.2; g.add(rightEdge);
-    } else {
-      const leftPanel=new THREE.Mesh(new THREE.BoxGeometry(panelW,panelH,panelD),panelMat);
-      leftPanel.position.x=-4.15; g.add(leftPanel);
-      const midPanel=new THREE.Mesh(new THREE.BoxGeometry(panelW,panelH,panelD),panelMat.clone());
-      midPanel.position.x=0; g.add(midPanel);
-      const rightPanel=new THREE.Mesh(new THREE.BoxGeometry(panelW,panelH,panelD),panelMat.clone());
-      rightPanel.position.x=4.15; g.add(rightPanel);
-      const leftEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(panelW,panelH,panelD)),edgeMat);
-      leftEdge.position.x=-4.15; g.add(leftEdge);
-      const midEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(panelW,panelH,panelD)),edgeMat.clone());
-      midEdge.position.x=0; g.add(midEdge);
-      const rightEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(panelW,panelH,panelD)),edgeMat.clone());
-      rightEdge.position.x=4.15; g.add(rightEdge);
-    }
+    // Build panel segments between each slit opening.
+    const openings=slitX.map(x=>[x-slitW*0.5,x+slitW*0.5]);
+    let cursor=-totalW*0.5;
+    const segments=[];
+    openings.forEach(([oL,oR])=>{
+      if(oL-cursor>0.14) segments.push([cursor,oL]);
+      cursor=oR;
+    });
+    if((totalW*0.5)-cursor>0.14) segments.push([cursor,totalW*0.5]);
+
+    segments.forEach(([x0,x1],idx)=>{
+      const w=x1-x0;
+      const cx=(x0+x1)*0.5;
+      const seg=new THREE.Mesh(new THREE.BoxGeometry(w,panelH,panelD),idx%2?panelMat.clone():panelMat);
+      seg.position.x=cx; g.add(seg);
+      const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,panelH,panelD)),edgeMat.clone());
+      edge.position.x=cx; g.add(edge);
+    });
 
     const slitMats=[];
     slitX.forEach(x=>{
@@ -710,7 +775,7 @@ const ThreeRenderer = (() => {
         `,
         transparent:true,side:THREE.DoubleSide,depthWrite:false
       });
-      const slitMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.05,panelH,1,48),slitMat);
+      const slitMesh=new THREE.Mesh(new THREE.PlaneGeometry(slitW,panelH,1,48),slitMat);
       slitMesh.position.set(x,0,0.14);
       g.add(slitMesh);
       slitMats.push(slitMat);
@@ -725,7 +790,14 @@ const ThreeRenderer = (() => {
     scene.add(g);
     return g;
   }
-  const sp1=mkSplitter(-10,1), sp2=mkSplitter(-32,2);
+  let activeSplitter=mkSplitter(-10,1);
+  let currentSplitterSlits=1;
+  function setStageSplitter(stageIdx){
+    const slitCount=Math.max(1,Math.min(stageIdx+1,6));
+    currentSplitterSlits=slitCount;
+    if(activeSplitter) scene.remove(activeSplitter);
+    activeSplitter=mkSplitter(-10,slitCount);
+  }
 
   // ── ProfessorCharacter ────────────────────────────────────
   const Prof = (() => {
@@ -907,15 +979,50 @@ const ThreeRenderer = (() => {
     { choices:[{label:'reflect',rgb:[.1,.5,1.],emissive:0x1177ff},{label:'transmit',rgb:[0.,1.,.85],emissive:0x00ffcc}] },
     { choices:[{label:'superpose',rgb:[.05,.9,.55],emissive:0x00dd66},{label:'interfere',rgb:[.55,.1,1.],emissive:0x8811ff}] }
   ];
+  const STAGE_TEMPLATES=[
+    { l:'reflect', r:'transmit', eL:0x1177ff, eR:0x00ffcc },
+    { l:'superpose', r:'interfere', eL:0x00dd66, eR:0x8811ff },
+    { l:'diffract', r:'tunnel', eL:0x33ccff, eR:0x00ffaa },
+    { l:'entangle', r:'decohere', eL:0x66aaff, eR:0xff5599 },
+  ];
+  const stageCache={};
   let stage=0, traveling=false, travelT=0;
   let pL=null, pR=null, hovered=null, gameActive=false;
   const pipCamera=new THREE.PerspectiveCamera(88,280/176,0.01,300);
   const decisionSides=[];
   let altPalette={r:0.7,g:0.15,b:0.95};
 
+  function hslToRgb(h,s,l){
+    const a=s*Math.min(l,1-l);
+    const f=n=>{
+      const k=(n+h*12)%12;
+      const c=l-a*Math.max(-1,Math.min(k-3,9-k,1));
+      return Math.round(c*255)/255;
+    };
+    return [f(0),f(8),f(4)];
+  }
+
+  function getStageConfig(idx=stage){
+    if(stageCache[idx]) return stageCache[idx];
+    if(idx<STAGES.length){
+      stageCache[idx]=STAGES[idx];
+      return stageCache[idx];
+    }
+    const t=STAGE_TEMPLATES[idx % STAGE_TEMPLATES.length];
+    const hue=(0.52+(idx*0.09))%1;
+    const hue2=(hue+0.18)%1;
+    stageCache[idx]={
+      choices:[
+        { label:t.l, rgb:hslToRgb(hue,0.92,0.56), emissive:t.eL },
+        { label:t.r, rgb:hslToRgb(hue2,0.92,0.54), emissive:t.eR },
+      ]
+    };
+    return stageCache[idx];
+  }
+
   function spawnPortals(idx){
     if(pL)scene.remove(pL); if(pR)scene.remove(pR);
-    const s=STAGES[idx]; pL=mkPortal(s.choices[0]); pL.position.set(-3.2,0,-14); scene.add(pL);
+    const s=getStageConfig(idx); pL=mkPortal(s.choices[0]); pL.position.set(-3.2,0,-14); scene.add(pL);
     pR=mkPortal(s.choices[1]); pR.position.set(3.2,0,-14); scene.add(pR);
   }
 
@@ -957,7 +1064,8 @@ const ThreeRenderer = (() => {
     const hits=rc.intersectObjects([pL.userData.hit,pR.userData.hit]);
     if(hits.length>0){
       const isLeft=hits[0].object===pL.userData.hit;
-      const c=isLeft?STAGES[stage].choices[0]:STAGES[stage].choices[1];
+      const s=getStageConfig();
+      const c=isLeft?s.choices[0]:s.choices[1];
       startTravel(c,isLeft);
     }
   });
@@ -972,8 +1080,9 @@ const ThreeRenderer = (() => {
     doFlash(); UIManager.clearLabels();
     tarP={r:choice.rgb[0],g:choice.rgb[1],b:choice.rgb[2]};
     decisionSides.push(isLeft?'L':'R');
-    MiniMapSystem.setPath(decisionSides);
-    const unchosen=isLeft?STAGES[stage].choices[1]:STAGES[stage].choices[0];
+    MiniMapSystem.setPath(decisionSides.slice(-2));
+    const s=getStageConfig();
+    const unchosen=isLeft?s.choices[1]:s.choices[0];
     altPalette={r:unchosen.rgb[0],g:unchosen.rgb[1],b:unchosen.rgb[2]};
     document.getElementById('pip-label-overlay').textContent=
       `if ${unchosen.label.toUpperCase()} was chosen`;
@@ -1006,14 +1115,15 @@ const ThreeRenderer = (() => {
             else   { AudioEngine.playCollapse(); UIManager.showResult('COLLAPSED','#f33',1200); GameState.setCoherence(GameState.waveCoherence-40); }
             setTimeout(()=>{
               stage++;
-              if(stage<STAGES.length&&won){
+              if(won){
+                setStageSplitter(stage);
                 spawnPortals(stage); GameState.setPhase('PROPAGATING');
                 document.getElementById('path-echo').textContent='';
-                const s=STAGES[stage]; UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+                const s=getStageConfig(); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
               } else {
                 if(pL)scene.remove(pL); if(pR)scene.remove(pR); pL=pR=null; gameActive=false;
                 document.getElementById('pip-frame').style.display='none';
-                setTimeout(()=>CollapseScreen.show(won,()=>restartGame()),1200);
+                CollapseVFX.play(()=>CollapseScreen.show(won,()=>restartGame()));
               }
             },won?1800:1000);
           });
@@ -1061,9 +1171,7 @@ const ThreeRenderer = (() => {
     }
 
     allMats.forEach(m=>{ m.uniforms.uTime.value=t;m.uniforms.uColor.value.copy(col);m.uniforms.uMouse.value.set(mouse.nx,mouse.ny);m.uniforms.uShake.value=shake*.05; });
-    [sp1,sp2].forEach(sp=>{
-      (sp.userData.slitMats||[]).forEach(sm=>{ sm.uniforms.uTime.value=t; });
-    });
+    (activeSplitter.userData.slitMats||[]).forEach(sm=>{ sm.uniforms.uTime.value=t; });
     if(pL)pL.userData.mat.uniforms.uTime.value=t;
     if(pR)pR.userData.mat.uniforms.uTime.value=t;
     if(pL&&!traveling){ pL.rotation.z=Math.sin(t*.6)*.06;pR.rotation.z=Math.cos(t*.7)*.06;pL.position.y=Math.sin(t*.5)*.12;pR.position.y=Math.cos(t*.55+1)*.12; }
@@ -1112,26 +1220,30 @@ const ThreeRenderer = (() => {
 
   function startGame(){
     ProfessorScene.hide();
+    CollapseVFX.reset();
     safeBuildProfessor();
     gameActive=true; stage=0; decisionSides.length=0;
+    setStageSplitter(0);
     GameState.setPhase('PROPAGATING');
     spawnPortals(0); UIManager.showHUD();
     MiniMapSystem.show(); MiniMapSystem.setPath([]);
     document.getElementById('pip-frame').style.display='none';
-    const s=STAGES[0]; UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+    const s=getStageConfig(0); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
     AudioEngine.playPropagate();
     animate();
   }
 
   function restartGame(){
     ProfessorScene.hide();
+    CollapseVFX.reset();
     GameState.reset(); stage=0; traveling=false; travelT=0; decisionSides.length=0;
     curP={r:0,g:.5,b:.8}; tarP={r:0,g:.5,b:.8};
     gameActive=true; GameState.setPhase('PROPAGATING');
+    setStageSplitter(0);
     spawnPortals(0); safeBuildProfessor();
     MiniMapSystem.show(); MiniMapSystem.setPath([]);
     document.getElementById('pip-frame').style.display='none';
-    const s=STAGES[0]; UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
+    const s=getStageConfig(0); UIManager.setLabels(s.choices[0].label,s.choices[1].label,s.choices[0].emissive,s.choices[1].emissive);
     UIManager.showHUD();
   }
 
