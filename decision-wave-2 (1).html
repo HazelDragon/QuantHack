@@ -12,10 +12,11 @@ canvas { display:block; }
 
 #cursor {
   position:fixed; width:14px; height:14px; margin-left:-7px; margin-top:-7px;
-  pointer-events:none; z-index:50; border-radius:50%;
+  pointer-events:none; z-index:9999; border-radius:50%;
   background:rgba(0,255,255,0.7); mix-blend-mode:screen;
   box-shadow:0 0 16px rgba(0,255,255,0.8),0 0 40px rgba(0,255,255,0.3);
   transition:transform 0.12s;
+  display:none;
 }
 #cursor.hovering { transform:scale(2.5); }
 #flash { position:fixed; inset:0; z-index:200; pointer-events:none; background:cyan; opacity:0; }
@@ -702,7 +703,14 @@ const IntroScene = (() => {
   const TEXT=`SYSTEM BOOT — QUANTUM INITIALIZATION...\n> Loading wave function... [████████████] DONE\n> Calibrating photon emitter... [████████████] DONE\n> Beam splitter array: ONLINE\n\nIDENTITY CONFIRMED: You are PHOTON-1\nWavelength: 532 nm  |  Speed: c  |  Mass: 0\n\nYou are neither here nor there.\nYou are the question before the answer.\nYou are a wave — until someone looks.\n\nTwo beam splitters stand between you and freedom.\nAt each one, the universe will try to collapse you.\n\nOBJECTIVE: Remain a wave. Survive both decisions.\nMETHOD: Click rapidly when the decision window opens.\n         Keep probability in the GREEN.\n\nThe tunnel awaits, photon. Try not to get observed.`;
   let started=false;
   function tw_run(el,txt,spd,cb){ el.textContent='';let i=0;const iv=setInterval(()=>{ if(i<txt.length){el.textContent+=txt[i];i++;}else{clearInterval(iv);bl.style.display='none';if(cb)cb();} },spd); }
-  function show(onStart){ scr.style.display='flex'; setTimeout(()=>{ AudioEngine.playIntro(); tw_run(tw,TEXT,16,()=>btn.classList.add('visible')); },600); btn.onclick=()=>{ if(started)return;started=true;scr.style.display='none';AudioEngine.init();if(onStart)onStart(); }; }
+  function show(onStart){
+    scr.style.display='flex';
+    document.body.classList.add('hide-native-cursor');
+    const c=document.getElementById('cursor');
+    if(c){ c.style.display='block'; c.style.left='-100px'; c.style.top='-100px'; }
+    setTimeout(()=>{ AudioEngine.playIntro(); tw_run(tw,TEXT,16,()=>btn.classList.add('visible')); },600);
+    btn.onclick=()=>{ if(started)return;started=true;scr.style.display='none';AudioEngine.init();if(onStart)onStart(); };
+  }
   return { show };
 })();
 
